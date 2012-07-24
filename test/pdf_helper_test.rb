@@ -19,8 +19,14 @@ class PdfHelperTest < ActionController::TestCase
 
   test "should prerender header and footer :template options" do
     options = @ac.send( :prerender_header_and_footer,
-                        :header => {:html => { :template => 'hf.html.erb'}});
+                        :header => {:html => { :template => 'hf.html.erb'}})
     assert !options[:header][:html].has_key?(:template)
     assert_match /^file:\/\/.*wicked_header_pdf.*\.html/, options[:header][:html][:url]
+  end
+
+  test "should prerender page object" do
+    options = @ac.send( :prerender_page, :html => { :template => 'hf.html.erb'})
+    assert !options[:html].has_key?(:template)
+    assert_match /^file:\/\/.*hf.*\.html/, options[:html][:url]
   end
 end

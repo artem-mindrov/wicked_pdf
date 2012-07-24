@@ -51,8 +51,18 @@ module PdfHelper
     end
 
     def make_pdf(options = {})
-      html_string = render_to_string(:template => options[:template], :layout => options[:layout], :formats => options[:formats], :handlers => options[:handlers])
+      @global_layout = options[:layout]
+      html_string = render_to_string(:template => options[:template], :layout => options[:layout],
+                                     :formats => options[:formats], :handlers => options[:handlers],
+                                     :locals => options[:locals])
       options = prerender_header_and_footer(options)
+
+      if !options[:objects].nil?
+        options[:objects].select {|o| o[:type] == 'page'}.each do |obj|
+          prerender_page(obj)
+        end
+      end
+
       w = WickedPdf.new(options[:wkhtmltopdf])
       w.pdf_from_string(html_string, options)
     end
@@ -63,7 +73,8 @@ module PdfHelper
       options[:template]    ||= File.join(controller_path, action_name)
       options[:disposition] ||= "inline"
       if options[:show_as_html]
-        render :template => options[:template], :layout => options[:layout], :formats => options[:formats], :handlers => options[:handlers], :content_type => "text/html"
+        render :template => options[:template], :layout => options[:layout], :formats => options[:formats],
+               :handlers => options[:handlers], :locals => options[:locals], :content_type => "text/html"
       else
         pdf_content = make_pdf(options)
         File.open(options[:save_to_file], 'wb') {|file| file << pdf_content } if options[:save_to_file]
@@ -75,16 +86,21 @@ module PdfHelper
     # to temp files and return a new options hash including the URLs to these files.
     def prerender_header_and_footer(options)
       [:header, :footer].each do |hf|
-        if options[hf] && options[hf][:html] && options[hf][:html][:template]
-          @hf_tempfiles = [] if ! defined?(@hf_tempfiles)
-          @hf_tempfiles.push( tf=WickedPdfTempfile.new("wicked_#{hf}_pdf.html") )
-          options[hf][:html][:layout] ||=  options[:layout]
-          tf.write render_to_string(:template => options[hf][:html][:template], :layout => options[hf][:html][:layout], :locals => options[hf][:html][:locals], :formats => options[hf][:html][:formats], :handlers => options[hf][:html][:handlers])
-          tf.flush
-          options[hf][:html].delete(:template)
-          options[hf][:html][:url] = "file:///#{tf.path}"
-        end
+        prerender_page(options[hf]) if options[hf]
       end
       options
+    end
+
+    def prerender_page(options)
+      if options[:html] && options[:html][:template]
+        tempfile_name = options[:html][:template].gsub(/\.html.*\Z/, '')
+        @hf_tempfiles ||= []
+        @hf_tempfiles.push( tf = WickedPdfTempfile.new("wicked_#{tempfile_name}_pdf.html") )
+        options[:html][:layout] ||= @global_layout
+        tf.write render_to_string(:template => options[:html][:template], :layout => options[:html][:layout], :locals => options[:html][:locals], :formats => options[:html][:formats], :handlers => options[:html][:handlers])
+        tf.flush
+        options[:html].delete(:template)
+        options[:html][:url] = "file:///#{tf.path}"
+      end
     end
 end

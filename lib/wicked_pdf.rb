@@ -61,12 +61,27 @@ class WickedPdf
         parse_header_footer(:header => options.delete(:header),
                             :footer => options.delete(:footer),
                             :layout => options[:layout]),
-        parse_toc(options.delete(:toc)),
         parse_outline(options.delete(:outline)),
         parse_margins(options.delete(:margin)),
         parse_others(options),
-        parse_basic_auth(options)
+        parse_basic_auth(options),
+        parse_objects(options.delete(:objects))
       ].join(' ')
+    end
+
+    def parse_objects(options)
+      r = ""
+      options.each do |obj|
+        r += "#{obj[:type].to_s} "
+        r += self.send(:"parse_#{obj[:type].to_s}", obj)
+      end
+      r
+    end
+
+    def parse_page(options)
+      r = "\"#{options[:html][:url]}\" " unless options[:html].blank? && options[:html][:url].blank?
+      r += make_options(options, [ :disable_javascript ], "", :boolean)
+      r
     end
 
     def parse_extra(options)
@@ -124,8 +139,9 @@ class WickedPdf
     end
 
     def parse_toc(options)
-      r = '--toc ' unless options.nil?
+      r = ""
       unless options.blank?
+        r += make_options(options, [ :style_sheet ], "xsl")
         r += make_options(options, [ :font_name, :header_text], "toc")
         r +=make_options(options, [ :depth,
                                     :header_fs,

@@ -84,22 +84,31 @@ class WickedPdfTest < ActiveSupport::TestCase
     wp = WickedPdf.new
 
     [:font_name, :header_text].each do |o|
-      assert_equal  "--toc-#{o.to_s.gsub('_', '-')} \"toc\"",
-                    wp.get_parsed_options(:toc => {o => "toc"}).strip
+      assert_equal  "toc --toc-#{o.to_s.gsub('_', '-')} \"toc\"",
+                    wp.get_parsed_options(:objects => [{:type => :toc, o => "toc"}]).strip
     end
 
     [ :depth, :header_fs, :l1_font_size, :l2_font_size, :l3_font_size, :l4_font_size,
       :l5_font_size, :l6_font_size, :l7_font_size, :l1_indentation, :l2_indentation,
       :l3_indentation, :l4_indentation, :l5_indentation, :l6_indentation, :l7_indentation
     ].each do |o|
-      assert_equal  "--toc-#{o.to_s.gsub('_', '-')} 5",
-                    wp.get_parsed_options(:toc => {o => 5}).strip
+      assert_equal  "toc --toc-#{o.to_s.gsub('_', '-')} 5",
+                    wp.get_parsed_options(:objects => [{:type => :toc, o => 5}]).strip
     end
 
     [:no_dots, :disable_links, :disable_back_links].each do |o|
-      assert_equal  "--toc-#{o.to_s.gsub('_', '-')}",
-                    wp.get_parsed_options(:toc => {o => true}).strip
+      assert_equal  "toc --toc-#{o.to_s.gsub('_', '-')}",
+                    wp.get_parsed_options(:objects => [{:type => :toc, o => true}]).strip
     end
+  end
+
+  test "should parse page options" do
+    wp = WickedPdf.new
+
+    assert_match /page.*file:.*\"page\".*html --disable-javascript"/,
+                  wp.get_parsed_options(:objects => [{:type => :page,
+                                                      :html => {:template => "page.html.erb"},
+                                                      :disable_javascript => true }]).strip
   end
 
   test "should parse outline options" do
